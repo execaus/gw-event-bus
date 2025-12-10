@@ -1,4 +1,4 @@
-package gw_kafka_client
+package gw_event_bus
 
 import (
 	"github.com/execaus/gw-event-bus/internal"
