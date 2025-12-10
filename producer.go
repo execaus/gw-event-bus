@@ -1,9 +1,9 @@
 package gw_kafka_client
 
 import (
-	"gw-kafka-client/internal"
-	"gw-kafka-client/internal/config"
-	"gw-kafka-client/internal/producer"
+	"gw-event-bus/internal"
+	"gw-event-bus/internal/config"
+	"gw-event-bus/internal/producer"
 
 	"go.uber.org/zap"
 )

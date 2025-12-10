@@ -1,4 +1,4 @@
-module gw-kafka-client
+module gw-event-bus
 
 go 1.25
 

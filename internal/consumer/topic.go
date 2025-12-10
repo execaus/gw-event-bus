@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"gw-kafka-client/internal"
-	"gw-kafka-client/internal/config"
-	"gw-kafka-client/internal/message"
+	"gw-event-bus/internal"
+	"gw-event-bus/internal/config"
+	"gw-event-bus/internal/message"
 	"time"
 
 	"github.com/segmentio/kafka-go"

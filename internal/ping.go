@@ -3,7 +3,7 @@ package internal
 import (
 	"context"
 	"fmt"
-	"gw-kafka-client/internal/config"
+	"gw-event-bus/internal/config"
 	"time"
 
 	"github.com/segmentio/kafka-go"
