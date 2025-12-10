@@ -30,7 +30,7 @@ type Topics struct {
 }
 
 type Topic[MessageT message.Types] struct {
-	name      internal.Name
+	name      internal.TopicName
 	address   string
 	partition int
 	batch     *kafka.Batch
@@ -80,7 +80,7 @@ func (t *Topic[MessageT]) Handle(ctx context.Context, handler HandleFunc[Message
 	}
 }
 
-func newTopic[MessageT message.Types](name internal.Name, partition int, address string, logger *zap.Logger) Topic[MessageT] {
+func newTopic[MessageT message.Types](name internal.TopicName, partition int, address string, logger *zap.Logger) Topic[MessageT] {
 	t := Topic[MessageT]{
 		name:      name,
 		address:   address,

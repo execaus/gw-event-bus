@@ -23,7 +23,7 @@ type Topics struct {
 }
 
 type Topic[MessageT message.Types] struct {
-	name      internal.Name
+	name      internal.TopicName
 	address   string
 	partition int
 	conn      *kafka.Conn
@@ -69,7 +69,7 @@ func (t *Topic[MessageT]) Send(ctx context.Context, message MessageT) error {
 	return nil
 }
 
-func newTopic[MessageT message.Types](name internal.Name, partition int, address string, logger *zap.Logger) Topic[MessageT] {
+func newTopic[MessageT message.Types](name internal.TopicName, partition int, address string, logger *zap.Logger) Topic[MessageT] {
 	t := Topic[MessageT]{
 		name:      name,
 		address:   address,
