@@ -1,6 +1,7 @@
 package gw_kafka_client
 
 import (
+	"gw-kafka-client/internal"
 	"gw-kafka-client/internal/config"
 	"gw-kafka-client/internal/consumer"
 
@@ -12,6 +13,8 @@ type Consumer struct {
 }
 
 func NewConsumer(config config.Config, logger *zap.Logger) Consumer {
+	internal.Ping(config, logger)
+
 	c := Consumer{
 		Topics: consumer.GetTopics(config, logger),
 	}

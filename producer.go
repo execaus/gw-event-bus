@@ -1,6 +1,7 @@
 package gw_kafka_client
 
 import (
+	"gw-kafka-client/internal"
 	"gw-kafka-client/internal/config"
 	"gw-kafka-client/internal/producer"
 
@@ -12,8 +13,11 @@ type Producer struct {
 }
 
 func NewProducer(config config.Config, logger *zap.Logger) Producer {
+	internal.Ping(config, logger)
+
 	p := Producer{
 		Topics: producer.GetTopics(config, logger),
 	}
+
 	return p
 }
