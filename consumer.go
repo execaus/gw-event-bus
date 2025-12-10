@@ -1,9 +1,9 @@
 package gw_kafka_client
 
 import (
-	"gw-event-bus/internal"
-	"gw-event-bus/internal/config"
-	"gw-event-bus/internal/consumer"
+	"github.com/execaus/gw-event-bus/internal"
+	"github.com/execaus/gw-event-bus/internal/config"
+	"github.com/execaus/gw-event-bus/internal/consumer"
 
 	"go.uber.org/zap"
 )

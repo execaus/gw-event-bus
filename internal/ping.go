@@ -3,8 +3,9 @@ package internal
 import (
 	"context"
 	"fmt"
-	"gw-event-bus/internal/config"
 	"time"
+
+	"github.com/execaus/gw-event-bus/internal/config"
 
 	"github.com/segmentio/kafka-go"
 	"go.uber.org/zap"
