@@ -1,4 +1,4 @@
-module gw-event-bus
+module github.com/execaus/gw-event-bus
 
 go 1.25
 
