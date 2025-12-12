@@ -20,11 +20,6 @@ const (
 	connectTimeout = 10 * time.Second
 )
 
-const (
-	batchMinBytes = 10 << 10 // 10KB
-	batchMaxBytes = 1 << 20  // 1MB
-)
-
 type HandleFunc[MessageT message.Types] = func(message MessageT)
 
 type Topics struct {
@@ -35,17 +30,17 @@ type Topic[MessageT message.Types] struct {
 	name       internal.TopicName
 	address    string
 	partition  int
-	batch      *kafka.Batch
 	logger     *zap.Logger
 	handlers   []HandleFunc[MessageT]
 	handlersWg sync.WaitGroup
 	closeCh    chan struct{}
+	conn       *kafka.Conn
 }
 
 func (t *Topic[MessageT]) Handle(ctx context.Context, handler HandleFunc[MessageT]) {
 	t.handlers = append(t.handlers, handler)
 
-	if t.batch != nil {
+	if t.conn != nil {
 		return
 	}
 
@@ -58,14 +53,14 @@ func (t *Topic[MessageT]) Handle(ctx context.Context, handler HandleFunc[Message
 		return
 	}
 
-	t.batch = conn.ReadBatch(batchMinBytes, batchMaxBytes)
+	t.conn = conn
 	t.closeCh = make(chan struct{})
 
 	go t.read()
 }
 
 func (t *Topic[MessageT]) read() {
-	b := make([]byte, batchMinBytes)
+	b := make([]byte, 0)
 	for {
 		select {
 		case <-t.closeCh:
@@ -75,7 +70,7 @@ func (t *Topic[MessageT]) read() {
 
 		var msg MessageT
 
-		n, err := t.batch.Read(b)
+		n, err := t.conn.Read(b)
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
 				continue
@@ -107,7 +102,7 @@ func (t *Topic[MessageT]) read() {
 func (t *Topic[MessageT]) Close() error {
 	close(t.closeCh)
 	t.handlersWg.Wait()
-	return t.batch.Close()
+	return t.conn.Close()
 }
 
 func newTopic[MessageT message.Types](name internal.TopicName, partition int, address string, logger *zap.Logger) *Topic[MessageT] {
@@ -115,7 +110,6 @@ func newTopic[MessageT message.Types](name internal.TopicName, partition int, ad
 		name:      name,
 		address:   address,
 		partition: partition,
-		batch:     nil,
 		logger:    logger,
 	}
 
