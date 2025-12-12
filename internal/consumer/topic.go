@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/execaus/gw-event-bus/internal"
@@ -27,16 +28,18 @@ const (
 type HandleFunc[MessageT message.Types] = func(message MessageT)
 
 type Topics struct {
-	PaymentsHighValueTransfer Topic[message.PaymentsHighValueTransferMessage]
+	PaymentsHighValueTransfer *Topic[message.PaymentsHighValueTransferMessage]
 }
 
 type Topic[MessageT message.Types] struct {
-	name      internal.TopicName
-	address   string
-	partition int
-	batch     *kafka.Batch
-	logger    *zap.Logger
-	handlers  []HandleFunc[MessageT]
+	name       internal.TopicName
+	address    string
+	partition  int
+	batch      *kafka.Batch
+	logger     *zap.Logger
+	handlers   []HandleFunc[MessageT]
+	handlersWg sync.WaitGroup
+	closeCh    chan struct{}
 }
 
 func (t *Topic[MessageT]) Handle(ctx context.Context, handler HandleFunc[MessageT]) {
@@ -56,6 +59,7 @@ func (t *Topic[MessageT]) Handle(ctx context.Context, handler HandleFunc[Message
 	}
 
 	t.batch = conn.ReadBatch(batchMinBytes, batchMaxBytes)
+	t.closeCh = make(chan struct{})
 
 	go t.read()
 }
@@ -63,6 +67,12 @@ func (t *Topic[MessageT]) Handle(ctx context.Context, handler HandleFunc[Message
 func (t *Topic[MessageT]) read() {
 	b := make([]byte, batchMinBytes)
 	for {
+		select {
+		case <-t.closeCh:
+			return
+		default:
+		}
+
 		var msg MessageT
 
 		n, err := t.batch.Read(b)
@@ -85,12 +95,22 @@ func (t *Topic[MessageT]) read() {
 		)
 
 		for _, handler := range t.handlers {
-			handler(msg)
+			t.handlersWg.Add(1)
+			go func() {
+				defer t.handlersWg.Done()
+				handler(msg)
+			}()
 		}
 	}
 }
 
-func newTopic[MessageT message.Types](name internal.TopicName, partition int, address string, logger *zap.Logger) Topic[MessageT] {
+func (t *Topic[MessageT]) Close() error {
+	close(t.closeCh)
+	t.handlersWg.Wait()
+	return t.batch.Close()
+}
+
+func newTopic[MessageT message.Types](name internal.TopicName, partition int, address string, logger *zap.Logger) *Topic[MessageT] {
 	t := Topic[MessageT]{
 		name:      name,
 		address:   address,
@@ -99,7 +119,7 @@ func newTopic[MessageT message.Types](name internal.TopicName, partition int, ad
 		logger:    logger,
 	}
 
-	return t
+	return &t
 }
 
 func GetTopics(host, port string, logger *zap.Logger) Topics {
