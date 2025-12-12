@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"sync"
 	"time"
@@ -78,6 +79,9 @@ func (t *Topic[MessageT]) read() {
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
 				continue
+			}
+			if errors.Is(err, net.ErrClosed) {
+				return
 			}
 			t.logger.Error(err.Error())
 			continue
