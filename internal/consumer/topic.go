@@ -20,6 +20,10 @@ const (
 	connectTimeout = 10 * time.Second
 )
 
+const (
+	readMaxBytes = 1 << 20 // 1MB
+)
+
 type HandleFunc[MessageT message.Types] = func(message MessageT)
 
 type Topics struct {
@@ -60,7 +64,7 @@ func (t *Topic[MessageT]) Handle(ctx context.Context, handler HandleFunc[Message
 }
 
 func (t *Topic[MessageT]) read() {
-	b := make([]byte, 0)
+	b := make([]byte, readMaxBytes)
 	for {
 		select {
 		case <-t.closeCh:
