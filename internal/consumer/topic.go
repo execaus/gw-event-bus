@@ -3,7 +3,9 @@ package consumer
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/execaus/gw-event-bus/internal"
@@ -14,7 +16,6 @@ import (
 )
 
 const (
-	readTimeout    = 5 * time.Second
 	connectTimeout = 10 * time.Second
 )
 
@@ -35,33 +36,40 @@ type Topic[MessageT message.Types] struct {
 	partition int
 	batch     *kafka.Batch
 	logger    *zap.Logger
+	handlers  []HandleFunc[MessageT]
 }
 
 func (t *Topic[MessageT]) Handle(ctx context.Context, handler HandleFunc[MessageT]) {
-	if t.batch == nil {
-		connCtx, cancel := context.WithTimeout(ctx, connectTimeout)
-		defer cancel()
+	t.handlers = append(t.handlers, handler)
 
-		conn, err := kafka.DialLeader(connCtx, "tcp", t.address, t.name, t.partition)
-		if err != nil {
-			t.logger.Error(err.Error())
-			return
-		}
-
-		if err = conn.SetReadDeadline(time.Now().Add(readTimeout)); err != nil {
-			t.logger.Error(err.Error())
-			return
-		}
-
-		t.batch = conn.ReadBatch(batchMinBytes, batchMaxBytes)
+	if t.batch != nil {
+		return
 	}
 
+	connCtx, cancel := context.WithTimeout(ctx, connectTimeout)
+	defer cancel()
+
+	conn, err := kafka.DialLeader(connCtx, "tcp", t.address, t.name, t.partition)
+	if err != nil {
+		t.logger.Error(err.Error())
+		return
+	}
+
+	t.batch = conn.ReadBatch(batchMinBytes, batchMaxBytes)
+
+	go t.read()
+}
+
+func (t *Topic[MessageT]) read() {
 	b := make([]byte, batchMinBytes)
 	for {
 		var msg MessageT
 
 		n, err := t.batch.Read(b)
 		if err != nil {
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				continue
+			}
 			t.logger.Error(err.Error())
 			continue
 		}
@@ -76,7 +84,9 @@ func (t *Topic[MessageT]) Handle(ctx context.Context, handler HandleFunc[Message
 			zap.ByteString("data", b[:n]),
 		)
 
-		handler(msg)
+		for _, handler := range t.handlers {
+			handler(msg)
+		}
 	}
 }
 
